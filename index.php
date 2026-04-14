@@ -1,9 +1,8 @@
 <?php
 // Configuración detallada de errores
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Ocultar errores en el HTML/JSON final
 ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/php_errors.log');
+ini_set('error_log', 'php://stderr'); // Log directly to Railway console
 
 // Headers para desarrollo
 header('X-Developer-Mode: Debug');
@@ -158,8 +157,9 @@ function extract_sat_data($html): array {
 function fetchHtml(string $url) {
     // Implementación simplificada compatible
     $headers = [
-        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) width=device-width',
+        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept: text/html,application/xhtml+xml',
+        'Accept-Language: es-MX,es;q=0.9',
     ];
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -167,10 +167,18 @@ function fetchHtml(string $url) {
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT => 20,
         CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_HTTPHEADER => $headers
+        CURLOPT_HTTPHEADER => $headers,
+        // Solución para error:0A00018A:SSL routines::dh key too small
+        // Permite conectar con servidores con seguridad TLS antigua/debil
+        CURLOPT_SSL_CIPHER_LIST => 'DEFAULT@SECLEVEL=1'
     ]);
     $resp = curl_exec($ch);
-    curl_close($ch);
+    if ($resp === false) {
+        error_log("CURL Error: " . curl_error($ch));
+    } else {
+        error_log("CURL Success: HTML Length = " . strlen($resp));
+    }
+    // curl_close($ch); // Deprecated en versiones recientes de FrankenPHP/PHP 8.4+
     return $resp;
 }
 
